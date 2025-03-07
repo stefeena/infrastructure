@@ -1,0 +1,51 @@
+name: Validate Terraform
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  validate-format:
+    runs-on: ubuntu-latest
+    name: Terraform Format Check
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+      - name: Fetch changed files
+        id: pr_files
+        uses: jitterbit/get-changed-files@v1
+        with:
+          format: "space-delimited"
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.2.4
+      - name: Validate Terraform Format
+        run: |
+          for changed_file in ${{ steps.pr_files.outputs.added_modified }}; do
+            if [[ $changed_file == *.tf ]]; then
+              terraform fmt -check $changed_file
+            fi
+          done
+
+  validate-terraform:
+    runs-on: ubuntu-latest
+    name: Terraform Validate
+    needs: validate-format
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.2.4
+      - name: Initialize Terraform
+        run: terraform init
+      - name: Validate Terraform
+        run: terraform validate
